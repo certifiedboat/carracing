@@ -356,6 +356,20 @@
         const OPPONENT_CAR_HEIGHT = 80;
         const OPPONENT_COLORS = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#ec4899']; // Red, Orange, Yellow, Green, Pink
 
+        // Bonus variables
+        let bonuses = [];
+        let lastBonusTime = 0;
+        const BONUS_SPAWN_INTERVAL = 5000; // Spawn a bonus every 5 seconds (on average)
+        const BONUS_WIDTH = 30;
+        const BONUS_HEIGHT = 30;
+        const COIN_BONUS_AMOUNT = 20; // Coins gained per coin bonus
+        const SPEED_BOOST_AMOUNT = 3; // Additional speed from boost
+        const SPEED_BOOST_DURATION = 3000; // 3 seconds boost
+        let isSpeedBoostActive = false;
+        let speedBoostOriginalSpeed = 5; // Store original speed before boost
+        let speedBoostEndTime = 0;
+
+
         // Car colors available for purchase
         const CAR_COLORS = [
             { name: 'Blue', hex: '#3b82f6', cost: 0 }, // Default, free
@@ -376,42 +390,60 @@
         let userId = 'anonymous'; // Default to anonymous
 
         // --- Firebase Initialization and Authentication ---
-        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        let firebaseConfig = {};
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
-        try {
-            app = initializeApp(firebaseConfig);
-            db = getFirestore(app);
-            auth = getAuth(app);
+        // Safely parse firebaseConfig
+        if (typeof __firebase_config !== 'undefined' && __firebase_config.trim() !== '') {
+            try {
+                firebaseConfig = JSON.parse(__firebase_config);
+            } catch (e) {
+                console.error("Error parsing __firebase_config:", e);
+                // firebaseConfig remains empty object if parsing fails
+            }
+        }
 
-            onAuthStateChanged(auth, async (user) => {
-                if (user) {
-                    userId = user.uid;
-                    console.log("Firebase authenticated. User ID:", userId);
-                    await loadPlayerData(); // Load player data once authenticated
-                    listenToLeaderboard(); // Start listening to leaderboard
-                    // If game is not running, show message box with player name
-                    if (gameOver) {
-                        playerNameInput.value = playerName;
-                        messageBox.style.display = 'block';
-                    }
-                } else {
-                    console.log("No user signed in, attempting anonymous sign-in.");
-                    try {
-                        const __initial_auth_token = typeof window !== 'undefined' && window.__initial_auth_token;
-                        if (__initial_auth_token) {
-                            await signInWithCustomToken(auth, __initial_auth_token);
-                        } else {
-                            await signInAnonymously(auth);
+        try {
+            // Only initialize if firebaseConfig is not empty
+            if (Object.keys(firebaseConfig).length > 0) {
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        console.log("Firebase authenticated. User ID:", userId);
+                        await loadPlayerData(); // Load player data once authenticated
+                        listenToLeaderboard(); // Start listening to leaderboard
+                        // If game is not running, show message box with player name
+                        if (gameOver) {
+                            playerNameInput.value = playerName;
+                            messageBox.style.display = 'block';
                         }
-                        // The onAuthStateChanged listener will be triggered again with the signed-in user
-                    } catch (error) {
-                        console.error("Firebase anonymous sign-in failed:", error);
-                        messageText.textContent = "Error loading game. Please try again.";
-                        messageBox.style.display = 'block';
+                    } else {
+                        console.log("No user signed in, attempting anonymous sign-in.");
+                        try {
+                            const __initial_auth_token = typeof window !== 'undefined' && window.__initial_auth_token;
+                            if (__initial_auth_token) {
+                                await signInWithCustomToken(auth, __initial_auth_token);
+                            } else {
+                                await signInAnonymously(auth);
+                            }
+                            // The onAuthStateChanged listener will be triggered again with the signed-in user
+                        } catch (error) {
+                            console.error("Firebase anonymous sign-in failed:", error);
+                            messageText.textContent = "Error loading game. Please try again.";
+                            messageBox.style.display = 'block';
+                        }
                     }
-                }
-            });
+                });
+            } else {
+                console.warn("Firebase config is empty. Firebase services will not be initialized.");
+                messageTitle.textContent = "Warning";
+                messageText.textContent = "Firebase services are not configured. Game data will not be saved.";
+                messageBox.style.display = 'block';
+            }
         } catch (error) {
             console.error("Firebase initialization failed:", error);
             messageTitle.textContent = "Error";
@@ -434,7 +466,7 @@
         // Load player data from Firestore
         async function loadPlayerData() {
             // Ensure Firebase user is available before attempting to load data
-            if (!auth.currentUser) {
+            if (!auth || !auth.currentUser) {
                 console.log("Firebase user not available, skipping loadPlayerData.");
                 return;
             }
@@ -472,7 +504,7 @@
         // Save player data to Firestore
         async function savePlayerData() {
             // Ensure Firebase user is available before attempting to save data
-            if (!auth.currentUser) {
+            if (!auth || !auth.currentUser) {
                 console.log("Firebase user not available, skipping savePlayerData.");
                 return;
             }
@@ -492,7 +524,7 @@
         // Update leaderboard in Firestore
         async function updateLeaderboard(newScore) {
             // Ensure Firebase user is available before attempting to update leaderboard
-            if (!auth.currentUser) {
+            if (!auth || !auth.currentUser) {
                 console.log("Firebase user not available, skipping updateLeaderboard.");
                 return;
             }
@@ -512,7 +544,7 @@
         // Listen to real-time updates for leaderboard
         function listenToLeaderboard() {
             // Ensure Firebase user is available before attempting to listen
-            if (!auth.currentUser) {
+            if (!auth || !auth.currentUser) {
                 console.log("Firebase user not available, skipping listenToLeaderboard.");
                 return;
             }
@@ -528,8 +560,10 @@
                     if (b.score !== a.score) {
                         return b.score - a.score;
                     }
-                    // If scores are equal, sort by timestamp (earlier timestamp first)
-                    return a.timestamp.toDate().getTime() - b.timestamp.toDate().getTime();
+                    // If timestamps are Firestore Timestamps, convert to Date objects for comparison
+                    const timestampA = a.timestamp && typeof a.timestamp.toDate === 'function' ? a.timestamp.toDate().getTime() : 0;
+                    const timestampB = b.timestamp && typeof b.timestamp.toDate === 'function' ? b.timestamp.toDate().getTime() : 0;
+                    return timestampA - timestampB;
                 });
                 // Take top 10 scores
                 renderLeaderboard(scores.slice(0, 10));
@@ -666,6 +700,12 @@
                 lastOpponentTime = currentTime;
             }
 
+            // Spawn bonuses
+            if (currentTime - lastBonusTime > BONUS_SPAWN_INTERVAL) {
+                spawnBonus();
+                lastBonusTime = currentTime;
+            }
+
             // Move and update opponent cars
             opponentCars.forEach((car, index) => {
                 car.y += gameSpeed; // Move down
@@ -683,6 +723,45 @@
                     endGame();
                 }
             });
+
+            // Move and update bonuses
+            bonuses.forEach((bonus, index) => {
+                bonus.y += gameSpeed;
+
+                // Remove bonuses that go off-screen
+                if (bonus.y > GAME_HEIGHT) {
+                    bonuses.splice(index, 1);
+                }
+
+                // Collision detection with player car
+                if (checkCollision(playerCar, bonus)) {
+                    bonuses.splice(index, 1); // Remove bonus on collision
+                    if (bonus.type === 'coin') {
+                        coins += COIN_BONUS_AMOUNT;
+                        coinsDisplay.textContent = `Coins: ${coins}`;
+                        showMessage("Coin Collected!", `+${COIN_BONUS_AMOUNT} Coins!`);
+                    } else if (bonus.type === 'speed_boost') {
+                        if (!isSpeedBoostActive) { // Only apply if not already boosted
+                            speedBoostOriginalSpeed = gameSpeed; // Store current speed
+                            gameSpeed += SPEED_BOOST_AMOUNT;
+                            isSpeedBoostActive = true;
+                            speedBoostEndTime = currentTime + SPEED_BOOST_DURATION;
+                            showMessage("Speed Boost!", "Zoom!");
+                        } else {
+                            // If already boosted, just extend the duration
+                            speedBoostEndTime = currentTime + SPEED_BOOST_DURATION;
+                            showMessage("Speed Boost Extended!", "More Zoom!");
+                        }
+                    }
+                }
+            });
+
+            // Handle speed boost duration
+            if (isSpeedBoostActive && currentTime > speedBoostEndTime) {
+                gameSpeed = speedBoostOriginalSpeed; // Revert to original speed
+                isSpeedBoostActive = false;
+                showMessage("Speed Boost Ended", "Back to normal speed.");
+            }
 
             // Increase game speed gradually
             gameSpeed += 0.001; // Small increment per frame
@@ -732,6 +811,39 @@
             // Draw opponent cars
             opponentCars.forEach(car => {
                 drawCar(car.x, car.y, car.width, car.height, car.color);
+            });
+
+            // Draw bonuses
+            bonuses.forEach(bonus => {
+                if (bonus.type === 'coin') {
+                    ctx.fillStyle = '#FFD700'; // Gold color for coin
+                    ctx.beginPath();
+                    ctx.arc(bonus.x + bonus.width / 2, bonus.y + bonus.height / 2, bonus.width / 2, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = '#DAA520'; // Darker gold border
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                    ctx.fillStyle = '#000'; // Text color
+                    ctx.font = 'bold 16px Arial'; // Make 'C' bold and larger
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('C', bonus.x + bonus.width / 2, bonus.y + bonus.height / 2); // 'C' for coin
+                } else if (bonus.type === 'speed_boost') {
+                    ctx.fillStyle = '#32CD32'; // Lime green for speed boost
+                    ctx.beginPath();
+                    ctx.moveTo(bonus.x + bonus.width / 2, bonus.y); // Top point
+                    ctx.lineTo(bonus.x + bonus.width, bonus.y + bonus.height); // Bottom right
+                    ctx.lineTo(bonus.x + bonus.width * 0.75, bonus.y + bonus.height); // Inner bottom right
+                    ctx.lineTo(bonus.x + bonus.width * 0.75, bonus.y + bonus.height * 0.5); // Mid right
+                    ctx.lineTo(bonus.x + bonus.width * 0.25, bonus.y + bonus.height * 0.5); // Mid left
+                    ctx.lineTo(bonus.x + bonus.width * 0.25, bonus.y + bonus.height); // Inner bottom left
+                    ctx.lineTo(bonus.x, bonus.y + bonus.height); // Bottom left
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.strokeStyle = '#228B22'; // Darker green border
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                }
             });
         }
 
@@ -793,6 +905,20 @@
             });
         }
 
+        // Spawn a new bonus object
+        function spawnBonus() {
+            const lane = Math.floor(Math.random() * 3);
+            const x = lane * LANE_WIDTH + (LANE_WIDTH - BONUS_WIDTH) / 2;
+            const bonusType = Math.random() < 0.7 ? 'coin' : 'speed_boost'; // 70% chance for coin, 30% for speed
+            bonuses.push({
+                x: x,
+                y: -BONUS_HEIGHT,
+                width: BONUS_WIDTH,
+                height: BONUS_HEIGHT,
+                type: bonusType
+            });
+        }
+
         // Check for collision between two rectangles
         function checkCollision(obj1, obj2) {
             return obj1.x < obj2.x + obj2.width &&
@@ -832,7 +958,13 @@
             gameSpeed = 5;
             playerCar.x = GAME_WIDTH / 2 - PLAYER_CAR_WIDTH / 2; // Reset player position
             opponentCars = []; // Clear opponent cars
+            bonuses = []; // Clear bonuses
+            isSpeedBoostActive = false;
+            speedBoostEndTime = 0;
+            speedBoostOriginalSpeed = 5; // Reset original speed
             lastOpponentTime = performance.now(); // Reset timer for opponent spawning
+            lastBonusTime = performance.now(); // Reset timer for bonus spawning
+
             messageBox.style.display = 'none'; // Hide message box
             leaderboardContainer.style.display = 'none'; // Hide leaderboard
             shopContainer.style.display = 'none'; // Hide shop
