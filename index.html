@@ -46,7 +46,7 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background-color: rgba(0, 0, 0, 0.8);
+            background-color: rgba(0, 0, 0, 0.9); /* Darker overlay */
             color: white;
             padding: 30px;
             border-radius: 15px;
@@ -55,6 +55,7 @@
             z-index: 100;
             display: none; /* Hidden by default */
             border: 2px solid #4a5568;
+            max-width: 90%; /* Responsive width */
         }
         .message-box h2 {
             font-size: 2.5rem;
@@ -77,6 +78,7 @@
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
             transition: all 0.3s ease;
             outline: none; /* Remove outline on focus */
+            margin-top: 10px;
         }
         .button-primary:hover {
             transform: translateY(-3px); /* Lift effect on hover */
@@ -124,6 +126,114 @@
                 display: none;
             }
         }
+
+        /* Leaderboard styles */
+        .leaderboard-container {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.7);
+            z-index: 100;
+            display: none; /* Hidden by default */
+            border: 2px solid #4a5568;
+            max-width: 90%;
+            width: 400px;
+        }
+        .leaderboard-container h2 {
+            font-size: 2.5rem;
+            margin-bottom: 20px;
+            color: #f6ad55;
+        }
+        .leaderboard-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #4a5568;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .leaderboard-list li {
+            padding: 10px 15px;
+            border-bottom: 1px solid #4a5568;
+            display: flex;
+            justify-content: space-between;
+            font-size: 1.1rem;
+        }
+        .leaderboard-list li:last-child {
+            border-bottom: none;
+        }
+        .leaderboard-list li:nth-child(odd) {
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+
+        /* Car Customization / Shop styles */
+        .shop-container {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.7);
+            z-index: 100;
+            display: none; /* Hidden by default */
+            border: 2px solid #4a5568;
+            max-width: 90%;
+            width: 400px;
+        }
+        .shop-container h2 {
+            font-size: 2.5rem;
+            margin-bottom: 20px;
+            color: #f6ad55;
+        }
+        .color-options {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .color-button {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: 3px solid transparent;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            color: white;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+            transition: transform 0.2s ease, border-color 0.2s ease;
+        }
+        .color-button:hover {
+            transform: scale(1.05);
+        }
+        .color-button.selected {
+            border-color: #f6ad55; /* Highlight selected color */
+            transform: scale(1.1);
+        }
+        .color-button.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            filter: grayscale(100%);
+        }
+        .color-button span {
+            font-size: 0.8rem;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+        }
     </style>
 </head>
 <body>
@@ -131,6 +241,7 @@
         <div class="game-info">
             <div id="scoreDisplay">Score: 0</div>
             <div id="speedDisplay">Speed: 0 km/h</div>
+            <div id="coinsDisplay">Coins: 0</div>
         </div>
         <canvas id="gameCanvas"></canvas>
 
@@ -143,12 +254,39 @@
         <!-- Message Box (Game Over/Start) -->
         <div id="messageBox" class="message-box">
             <h2 id="messageTitle">Car Racing Game</h2>
-            <p id="messageText">Press 'Start Game' to begin!</p>
+            <p id="messageText">Enter your name and press 'Start Game'!</p>
+            <input type="text" id="playerNameInput" placeholder="Enter your name" class="p-3 mb-4 rounded-lg bg-gray-700 text-white w-full max-w-xs text-center text-lg outline-none focus:ring-2 focus:ring-purple-500" maxlength="15">
             <button id="startButton" class="button-primary">Start Game</button>
+            <button id="leaderboardButton" class="button-primary mt-4">Leaderboard</button>
+            <button id="customizeCarButton" class="button-primary mt-4">Customize Car</button>
+        </div>
+
+        <!-- Leaderboard Container -->
+        <div id="leaderboardContainer" class="leaderboard-container">
+            <h2>Leaderboard</h2>
+            <ul id="leaderboardList" class="leaderboard-list">
+                <!-- Leaderboard items will be inserted here by JS -->
+            </ul>
+            <button id="closeLeaderboardButton" class="button-primary">Close</button>
+        </div>
+
+        <!-- Car Customization / Shop Container -->
+        <div id="shopContainer" class="shop-container">
+            <h2>Customize Your Car</h2>
+            <p class="text-xl mb-4">Your Coins: <span id="shopCoinsDisplay">0</span></p>
+            <div id="colorOptions" class="color-options">
+                <!-- Color buttons will be inserted here by JS -->
+            </div>
+            <button id="closeShopButton" class="button-primary">Close</button>
         </div>
     </div>
 
-    <script>
+    <script type="module">
+        // Firebase imports
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, query, orderBy, limit, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
         // Get canvas and its 2D rendering context
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
@@ -156,14 +294,29 @@
         // Get UI elements
         const scoreDisplay = document.getElementById('scoreDisplay');
         const speedDisplay = document.getElementById('speedDisplay');
+        const coinsDisplay = document.getElementById('coinsDisplay');
         const messageBox = document.getElementById('messageBox');
         const messageTitle = document.getElementById('messageTitle');
         const messageText = document.getElementById('messageText');
+        const playerNameInput = document.getElementById('playerNameInput');
         const startButton = document.getElementById('startButton');
+        const leaderboardButton = document.getElementById('leaderboardButton');
+        const customizeCarButton = document.getElementById('customizeCarButton');
 
         // Mobile control buttons
         const leftButton = document.getElementById('leftButton');
         const rightButton = document.getElementById('rightButton');
+
+        // Leaderboard elements
+        const leaderboardContainer = document.getElementById('leaderboardContainer');
+        const leaderboardList = document.getElementById('leaderboardList');
+        const closeLeaderboardButton = document.getElementById('closeLeaderboardButton');
+
+        // Shop elements
+        const shopContainer = document.getElementById('shopContainer');
+        const shopCoinsDisplay = document.getElementById('shopCoinsDisplay');
+        const colorOptions = document.getElementById('colorOptions');
+        const closeShopButton = document.getElementById('closeShopButton');
 
         // Game settings
         const GAME_WIDTH = 400;
@@ -176,7 +329,7 @@
         // Player car settings
         const PLAYER_CAR_WIDTH = 40;
         const PLAYER_CAR_HEIGHT = 80;
-        const PLAYER_CAR_COLOR = '#3b82f6'; // Blue color
+        const DEFAULT_PLAYER_CAR_COLOR = '#3b82f6'; // Blue color
         let playerCar = {
             x: GAME_WIDTH / 2 - PLAYER_CAR_WIDTH / 2, // Start in middle lane
             y: GAME_HEIGHT - PLAYER_CAR_HEIGHT - 50, // Near bottom
@@ -190,6 +343,10 @@
         // Game state variables
         let gameSpeed = 5; // Initial game speed (how fast objects move down)
         let score = 0;
+        let coins = 0;
+        let highScore = 0;
+        let playerName = "Guest";
+        let selectedCarColor = DEFAULT_PLAYER_CAR_COLOR;
         let gameOver = true;
         let opponentCars = [];
         let lastOpponentTime = 0;
@@ -198,8 +355,233 @@
         const OPPONENT_CAR_HEIGHT = 80;
         const OPPONENT_COLORS = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#ec4899']; // Red, Orange, Yellow, Green, Pink
 
+        // Car colors available for purchase
+        const CAR_COLORS = [
+            { name: 'Blue', hex: '#3b82f6', cost: 0 }, // Default, free
+            { name: 'Red', hex: '#ef4444', cost: 50 },
+            { name: 'Green', hex: '#22c55e', cost: 75 },
+            { name: 'Purple', hex: '#8b5cf6', cost: 100 },
+            { name: 'Yellow', hex: '#eab308', cost: 120 },
+            { name: 'Pink', hex: '#ec4899', cost: 150 }
+        ];
+
         // Keyboard input
         let keys = {};
+
+        // Firebase variables
+        let app;
+        let db;
+        let auth;
+        let userId = 'anonymous'; // Default to anonymous
+        let isAuthReady = false;
+
+        // --- Firebase Initialization and Authentication ---
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+        try {
+            app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
+
+            onAuthStateChanged(auth, async (user) => {
+                if (user) {
+                    userId = user.uid;
+                    console.log("Firebase authenticated. User ID:", userId);
+                    await loadPlayerData();
+                    listenToLeaderboard();
+                    isAuthReady = true;
+                    // If game is not running, show message box with player name
+                    if (gameOver) {
+                        playerNameInput.value = playerName;
+                        messageBox.style.display = 'block';
+                    }
+                } else {
+                    console.log("No user signed in, attempting anonymous sign-in.");
+                    try {
+                        const __initial_auth_token = typeof window !== 'undefined' && window.__initial_auth_token;
+                        if (__initial_auth_token) {
+                            await signInWithCustomToken(auth, __initial_auth_token);
+                        } else {
+                            await signInAnonymously(auth);
+                        }
+                    } catch (error) {
+                        console.error("Firebase anonymous sign-in failed:", error);
+                        messageText.textContent = "Error loading game. Please try again.";
+                        messageBox.style.display = 'block';
+                    }
+                }
+            });
+        } catch (error) {
+            console.error("Firebase initialization failed:", error);
+            messageTitle.textContent = "Error";
+            messageText.textContent = "Failed to initialize game services. Please check your connection.";
+            messageBox.style.display = 'block';
+        }
+
+        // --- Firestore Data Operations ---
+
+        // Get player data document reference
+        function getPlayerDocRef() {
+            return doc(db, `artifacts/${appId}/users/${userId}/playerData/profile`);
+        }
+
+        // Get leaderboard collection reference
+        function getLeaderboardCollectionRef() {
+            return collection(db, `artifacts/${appId}/public/data/leaderboard`);
+        }
+
+        // Load player data from Firestore
+        async function loadPlayerData() {
+            if (!isAuthReady && auth.currentUser?.uid !== userId) { // Ensure auth is ready and userId matches
+                console.log("Auth not ready or user ID mismatch, skipping loadPlayerData.");
+                return;
+            }
+            try {
+                const playerDoc = await getDoc(getPlayerDocRef());
+                if (playerDoc.exists()) {
+                    const data = playerDoc.data();
+                    playerName = data.name || "Guest";
+                    coins = data.coins || 0;
+                    highScore = data.highScore || 0;
+                    selectedCarColor = data.selectedCarColor || DEFAULT_PLAYER_CAR_COLOR;
+                    playerCar.color = selectedCarColor; // Apply loaded color
+                    console.log("Player data loaded:", data);
+                } else {
+                    // Create initial player data if it doesn't exist
+                    await setDoc(getPlayerDocRef(), {
+                        name: "Guest",
+                        coins: 0,
+                        highScore: 0,
+                        selectedCarColor: DEFAULT_PLAYER_CAR_COLOR
+                    });
+                    playerName = "Guest";
+                    coins = 0;
+                    highScore = 0;
+                    selectedCarColor = DEFAULT_PLAYER_CAR_COLOR;
+                    playerCar.color = selectedCarColor;
+                    console.log("New player profile created.");
+                }
+                updatePlayerUI();
+            } catch (error) {
+                console.error("Error loading player data:", error);
+            }
+        }
+
+        // Save player data to Firestore
+        async function savePlayerData() {
+            if (!isAuthReady) {
+                console.log("Auth not ready, skipping savePlayerData.");
+                return;
+            }
+            try {
+                await setDoc(getPlayerDocRef(), {
+                    name: playerName,
+                    coins: coins,
+                    highScore: highScore,
+                    selectedCarColor: selectedCarColor
+                }, { merge: true }); // Use merge to only update specified fields
+                console.log("Player data saved.");
+            } catch (error) {
+                console.error("Error saving player data:", error);
+            }
+        }
+
+        // Update leaderboard in Firestore
+        async function updateLeaderboard(newScore) {
+            if (!isAuthReady) {
+                console.log("Auth not ready, skipping updateLeaderboard.");
+                return;
+            }
+            try {
+                // Add a new score entry to the leaderboard collection
+                await addDoc(getLeaderboardCollectionRef(), {
+                    name: playerName,
+                    score: newScore,
+                    timestamp: new Date()
+                });
+                console.log("Leaderboard updated with new score:", newScore);
+            } catch (error) {
+                console.error("Error updating leaderboard:", error);
+            }
+        }
+
+        // Listen to real-time updates for leaderboard
+        function listenToLeaderboard() {
+            if (!isAuthReady) {
+                console.log("Auth not ready, skipping listenToLeaderboard.");
+                return;
+            }
+            const q = query(getLeaderboardCollectionRef(), orderBy("score", "desc"), limit(10)); // Top 10 scores
+            onSnapshot(q, (snapshot) => {
+                const scores = [];
+                snapshot.forEach((doc) => {
+                    scores.push(doc.data());
+                });
+                renderLeaderboard(scores);
+            }, (error) => {
+                console.error("Error listening to leaderboard:", error);
+            });
+        }
+
+        // --- UI Update Functions ---
+
+        function updatePlayerUI() {
+            coinsDisplay.textContent = `Coins: ${coins}`;
+            shopCoinsDisplay.textContent = coins;
+            // Update the selected car color in the game
+            playerCar.color = selectedCarColor;
+            // Update the input field with the current player name
+            playerNameInput.value = playerName;
+            // Highlight the currently selected color in the shop
+            renderColorOptions();
+        }
+
+        function renderLeaderboard(scores) {
+            leaderboardList.innerHTML = ''; // Clear previous list
+            if (scores.length === 0) {
+                leaderboardList.innerHTML = '<li class="text-center py-4">No scores yet. Be the first!</li>';
+                return;
+            }
+            scores.forEach((entry, index) => {
+                const li = document.createElement('li');
+                li.innerHTML = `<span>${index + 1}. ${entry.name}</span><span>${entry.score}</span>`;
+                leaderboardList.appendChild(li);
+            });
+        }
+
+        function renderColorOptions() {
+            colorOptions.innerHTML = ''; // Clear previous options
+            CAR_COLORS.forEach(color => {
+                const button = document.createElement('button');
+                button.className = `color-button ${selectedCarColor === color.hex ? 'selected' : ''} ${coins < color.cost && color.cost > 0 ? 'disabled' : ''}`;
+                button.style.backgroundColor = color.hex;
+                button.innerHTML = `<span>${color.cost > 0 ? `${color.cost}C` : 'FREE'}</span>`;
+                button.onclick = () => purchaseColor(color);
+                colorOptions.appendChild(button);
+            });
+        }
+
+        function purchaseColor(color) {
+            if (selectedCarColor === color.hex) {
+                console.log("Color already selected.");
+                return;
+            }
+            if (coins >= color.cost) {
+                coins -= color.cost;
+                selectedCarColor = color.hex;
+                playerCar.color = selectedCarColor; // Update car color immediately
+                savePlayerData(); // Save new coin balance and selected color
+                updatePlayerUI(); // Update coin display and shop buttons
+                console.log(`Purchased ${color.name} for ${color.cost} coins.`);
+            } else {
+                console.log("Not enough coins to purchase this color.");
+                // Optionally show a message to the user
+                showMessage("Not Enough Coins!", `You need ${color.cost - coins} more coins for ${color.name}.`);
+            }
+        }
+
+        // --- Game Core Logic ---
 
         // Adjust canvas size for responsiveness
         function resizeCanvas() {
@@ -234,10 +616,10 @@
         });
 
         // Event listeners for mobile controls
-        leftButton.addEventListener('touchstart', () => { keys['ArrowLeft'] = true; });
-        leftButton.addEventListener('touchend', () => { keys['ArrowLeft'] = false; });
-        rightButton.addEventListener('touchstart', () => { keys['ArrowRight'] = true; });
-        rightButton.addEventListener('touchend', () => { keys['ArrowRight'] = false; });
+        leftButton.addEventListener('touchstart', (e) => { e.preventDefault(); keys['ArrowLeft'] = true; });
+        leftButton.addEventListener('touchend', (e) => { e.preventDefault(); keys['ArrowLeft'] = false; });
+        rightButton.addEventListener('touchstart', (e) => { e.preventDefault(); keys['ArrowRight'] = true; });
+        rightButton.addEventListener('touchend', (e) => { e.preventDefault(); keys['ArrowRight'] = false; });
 
         // Game loop
         function gameLoop(currentTime) {
@@ -277,6 +659,8 @@
                 if (car.y > GAME_HEIGHT) {
                     opponentCars.splice(index, 1);
                     score++; // Increment score for each car passed
+                    coins += 1; // Earn 1 coin per car passed
+                    coinsDisplay.textContent = `Coins: ${coins}`; // Update coins display immediately
                 }
 
                 // Collision detection with player car
@@ -307,6 +691,11 @@
             ctx.lineWidth = 5;
             ctx.setLineDash(LANE_LINE_DASH);
 
+            // Animate lane lines to move down
+            // This creates the illusion of movement
+            const lineDashOffset = (performance.now() * 0.05) % (LANE_LINE_DASH[0] + LANE_LINE_DASH[1]);
+            ctx.lineDashOffset = -lineDashOffset;
+
             // Left lane line
             ctx.beginPath();
             ctx.moveTo(LANE_WIDTH, 0);
@@ -320,9 +709,10 @@
             ctx.stroke();
 
             ctx.setLineDash([]); // Reset line dash for other drawings
+            ctx.lineDashOffset = 0; // Reset offset
 
             // Draw player car
-            drawCar(playerCar.x, playerCar.y, playerCar.width, playerCar.height, PLAYER_CAR_COLOR);
+            drawCar(playerCar.x, playerCar.y, playerCar.width, playerCar.height, playerCar.color);
 
             // Draw opponent cars
             opponentCars.forEach(car => {
@@ -330,23 +720,49 @@
             });
         }
 
-        // Helper function to draw a car (simple rectangle for now)
+        // Helper function to draw a car (more detailed shape)
         function drawCar(x, y, width, height, color) {
             ctx.fillStyle = color;
-            ctx.fillRect(x, y, width, height);
 
-            // Add a simple window/windshield
+            // Main body
+            ctx.beginPath();
+            ctx.moveTo(x + width * 0.1, y); // Top-left corner (slightly rounded)
+            ctx.lineTo(x + width * 0.9, y); // Top-right corner
+            ctx.lineTo(x + width, y + height * 0.9); // Bottom-right corner
+            ctx.lineTo(x, y + height * 0.9); // Bottom-left corner
+            ctx.closePath();
+            ctx.fill();
+
+            // Roof/Cabin
             ctx.fillStyle = 'rgba(255, 255, 255, 0.7)'; // Lighter color for window
-            ctx.fillRect(x + width * 0.1, y + height * 0.1, width * 0.8, height * 0.2);
+            ctx.beginPath();
+            ctx.moveTo(x + width * 0.2, y + height * 0.15);
+            ctx.lineTo(x + width * 0.8, y + height * 0.15);
+            ctx.lineTo(x + width * 0.7, y + height * 0.4);
+            ctx.lineTo(x + width * 0.3, y + height * 0.4);
+            ctx.closePath();
+            ctx.fill();
 
-            // Add wheels (simple circles/rectangles)
-            ctx.fillStyle = '#333'; // Dark grey for wheels
-            ctx.fillRect(x - 5, y + height * 0.2, 10, height * 0.2); // Left front
-            ctx.fillRect(x + width - 5, y + height * 0.2, 10, height * 0.2); // Right front
-            ctx.fillRect(x - 5, y + height * 0.6, 10, height * 0.2); // Left rear
-            ctx.fillRect(x + width - 5, y + height * 0.6, 10, height * 0.2); // Right rear
+            // Wheels (dark grey circles)
+            ctx.fillStyle = '#333';
+            const wheelRadius = width * 0.15;
+            // Front left wheel
+            ctx.beginPath();
+            ctx.arc(x + width * 0.15, y + height * 0.25, wheelRadius, 0, Math.PI * 2);
+            ctx.fill();
+            // Front right wheel
+            ctx.beginPath();
+            ctx.arc(x + width * 0.85, y + height * 0.25, wheelRadius, 0, Math.PI * 2);
+            ctx.fill();
+            // Rear left wheel
+            ctx.beginPath();
+            ctx.arc(x + width * 0.15, y + height * 0.75, wheelRadius, 0, Math.PI * 2);
+            ctx.fill();
+            // Rear right wheel
+            ctx.beginPath();
+            ctx.arc(x + width * 0.85, y + height * 0.75, wheelRadius, 0, Math.PI * 2);
+            ctx.fill();
         }
-
 
         // Spawn a new opponent car
         function spawnOpponentCar() {
@@ -374,13 +790,28 @@
         function endGame() {
             gameOver = true;
             messageTitle.textContent = 'Game Over!';
-            messageText.textContent = `You scored: ${score} points.`;
-            startButton.textContent = 'Restart Game';
+            messageText.textContent = `You scored: ${score} points. Your High Score: ${highScore} points.`;
+            startButton.textContent = 'Play Again';
             messageBox.style.display = 'block'; // Show game over message
+
+            if (score > highScore) {
+                highScore = score;
+                savePlayerData(); // Save new high score
+                updateLeaderboard(highScore); // Update leaderboard
+            }
+            savePlayerData(); // Always save coins and current name
         }
 
         // Start/Restart game
         function startGame() {
+            const enteredName = playerNameInput.value.trim();
+            if (enteredName) {
+                playerName = enteredName;
+            } else {
+                playerName = "Guest"; // Fallback if name is empty
+            }
+            savePlayerData(); // Save the entered name
+
             gameOver = false;
             score = 0;
             gameSpeed = 5;
@@ -388,16 +819,69 @@
             opponentCars = []; // Clear opponent cars
             lastOpponentTime = performance.now(); // Reset timer for opponent spawning
             messageBox.style.display = 'none'; // Hide message box
+            leaderboardContainer.style.display = 'none'; // Hide leaderboard
+            shopContainer.style.display = 'none'; // Hide shop
+
+            // Reset UI displays
+            scoreDisplay.textContent = `Score: ${score}`;
+            speedDisplay.textContent = `Speed: ${Math.floor(gameSpeed * 10)} km/h`;
+            coinsDisplay.textContent = `Coins: ${coins}`;
+
             requestAnimationFrame(gameLoop); // Start the game loop
         }
 
-        // Event listener for the start/restart button
+        // Helper function to show a temporary message box
+        function showMessage(title, text) {
+            const tempMessageBox = document.createElement('div');
+            tempMessageBox.className = 'message-box';
+            tempMessageBox.style.display = 'block';
+            tempMessageBox.style.opacity = '0';
+            tempMessageBox.style.transition = 'opacity 0.5s ease-in-out';
+            tempMessageBox.innerHTML = `<h2>${title}</h2><p>${text}</p>`;
+            document.body.appendChild(tempMessageBox);
+
+            setTimeout(() => {
+                tempMessageBox.style.opacity = '1';
+            }, 10); // Small delay to trigger transition
+
+            setTimeout(() => {
+                tempMessageBox.style.opacity = '0';
+                tempMessageBox.addEventListener('transitionend', () => {
+                    tempMessageBox.remove();
+                });
+            }, 2000); // Message visible for 2 seconds
+        }
+
+        // --- Event Listeners for UI Buttons ---
         startButton.addEventListener('click', startGame);
+
+        leaderboardButton.addEventListener('click', () => {
+            messageBox.style.display = 'none';
+            shopContainer.style.display = 'none';
+            leaderboardContainer.style.display = 'block';
+        });
+
+        closeLeaderboardButton.addEventListener('click', () => {
+            leaderboardContainer.style.display = 'none';
+            messageBox.style.display = 'block'; // Go back to main menu
+        });
+
+        customizeCarButton.addEventListener('click', () => {
+            messageBox.style.display = 'none';
+            leaderboardContainer.style.display = 'none';
+            shopContainer.style.display = 'block';
+            updatePlayerUI(); // Refresh coins and color options in shop
+        });
+
+        closeShopButton.addEventListener('click', () => {
+            shopContainer.style.display = 'none';
+            messageBox.style.display = 'block'; // Go back to main menu
+        });
 
         // Show initial message box when the page loads
         window.onload = function() {
             resizeCanvas(); // Ensure canvas is sized correctly on load
-            messageBox.style.display = 'block';
+            // Firebase auth listener will handle showing messageBox after loading data
         };
     </script>
 </body>
