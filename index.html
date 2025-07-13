@@ -285,7 +285,7 @@
         // Firebase imports
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, query, orderBy, limit, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, setDoc, addDoc, collection, query, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Get canvas and its 2D rendering context
         const canvas = document.getElementById('gameCanvas');
@@ -337,7 +337,8 @@
             height: PLAYER_CAR_HEIGHT,
             speedX: 0, // Horizontal speed
             maxSpeedX: 5, // Max horizontal speed
-            lane: 1 // 0: left, 1: middle, 2: right
+            lane: 1, // 0: left, 1: middle, 2: right
+            color: DEFAULT_PLAYER_CAR_COLOR // Initial color
         };
 
         // Game state variables
@@ -373,7 +374,6 @@
         let db;
         let auth;
         let userId = 'anonymous'; // Default to anonymous
-        let isAuthReady = false;
 
         // --- Firebase Initialization and Authentication ---
         const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
@@ -388,9 +388,8 @@
                 if (user) {
                     userId = user.uid;
                     console.log("Firebase authenticated. User ID:", userId);
-                    await loadPlayerData();
-                    listenToLeaderboard();
-                    isAuthReady = true;
+                    await loadPlayerData(); // Load player data once authenticated
+                    listenToLeaderboard(); // Start listening to leaderboard
                     // If game is not running, show message box with player name
                     if (gameOver) {
                         playerNameInput.value = playerName;
@@ -405,6 +404,7 @@
                         } else {
                             await signInAnonymously(auth);
                         }
+                        // The onAuthStateChanged listener will be triggered again with the signed-in user
                     } catch (error) {
                         console.error("Firebase anonymous sign-in failed:", error);
                         messageText.textContent = "Error loading game. Please try again.";
@@ -433,8 +433,9 @@
 
         // Load player data from Firestore
         async function loadPlayerData() {
-            if (!isAuthReady && auth.currentUser?.uid !== userId) { // Ensure auth is ready and userId matches
-                console.log("Auth not ready or user ID mismatch, skipping loadPlayerData.");
+            // Ensure Firebase user is available before attempting to load data
+            if (!auth.currentUser) {
+                console.log("Firebase user not available, skipping loadPlayerData.");
                 return;
             }
             try {
@@ -445,7 +446,7 @@
                     coins = data.coins || 0;
                     highScore = data.highScore || 0;
                     selectedCarColor = data.selectedCarColor || DEFAULT_PLAYER_CAR_COLOR;
-                    playerCar.color = selectedCarColor; // Apply loaded color
+                    playerCar.color = selectedCarColor; // Apply loaded color to game car
                     console.log("Player data loaded:", data);
                 } else {
                     // Create initial player data if it doesn't exist
@@ -462,7 +463,7 @@
                     playerCar.color = selectedCarColor;
                     console.log("New player profile created.");
                 }
-                updatePlayerUI();
+                updatePlayerUI(); // Update UI after loading data
             } catch (error) {
                 console.error("Error loading player data:", error);
             }
@@ -470,8 +471,9 @@
 
         // Save player data to Firestore
         async function savePlayerData() {
-            if (!isAuthReady) {
-                console.log("Auth not ready, skipping savePlayerData.");
+            // Ensure Firebase user is available before attempting to save data
+            if (!auth.currentUser) {
+                console.log("Firebase user not available, skipping savePlayerData.");
                 return;
             }
             try {
@@ -489,8 +491,9 @@
 
         // Update leaderboard in Firestore
         async function updateLeaderboard(newScore) {
-            if (!isAuthReady) {
-                console.log("Auth not ready, skipping updateLeaderboard.");
+            // Ensure Firebase user is available before attempting to update leaderboard
+            if (!auth.currentUser) {
+                console.log("Firebase user not available, skipping updateLeaderboard.");
                 return;
             }
             try {
@@ -498,7 +501,7 @@
                 await addDoc(getLeaderboardCollectionRef(), {
                     name: playerName,
                     score: newScore,
-                    timestamp: new Date()
+                    timestamp: new Date() // Use timestamp for potential secondary sorting if scores are equal
                 });
                 console.log("Leaderboard updated with new score:", newScore);
             } catch (error) {
@@ -508,17 +511,28 @@
 
         // Listen to real-time updates for leaderboard
         function listenToLeaderboard() {
-            if (!isAuthReady) {
-                console.log("Auth not ready, skipping listenToLeaderboard.");
+            // Ensure Firebase user is available before attempting to listen
+            if (!auth.currentUser) {
+                console.log("Firebase user not available, skipping listenToLeaderboard.");
                 return;
             }
-            const q = query(getLeaderboardCollectionRef(), orderBy("score", "desc"), limit(10)); // Top 10 scores
+            // Fetch all documents in the leaderboard collection
+            const q = collection(db, `artifacts/${appId}/public/data/leaderboard`);
             onSnapshot(q, (snapshot) => {
                 const scores = [];
                 snapshot.forEach((doc) => {
                     scores.push(doc.data());
                 });
-                renderLeaderboard(scores);
+                // Sort scores in memory (descending by score, then ascending by timestamp for ties)
+                scores.sort((a, b) => {
+                    if (b.score !== a.score) {
+                        return b.score - a.score;
+                    }
+                    // If scores are equal, sort by timestamp (earlier timestamp first)
+                    return a.timestamp.toDate().getTime() - b.timestamp.toDate().getTime();
+                });
+                // Take top 10 scores
+                renderLeaderboard(scores.slice(0, 10));
             }, (error) => {
                 console.error("Error listening to leaderboard:", error);
             });
@@ -565,6 +579,7 @@
         function purchaseColor(color) {
             if (selectedCarColor === color.hex) {
                 console.log("Color already selected.");
+                showMessage("Color Already Selected", "This color is already your car's color!");
                 return;
             }
             if (coins >= color.cost) {
@@ -574,9 +589,9 @@
                 savePlayerData(); // Save new coin balance and selected color
                 updatePlayerUI(); // Update coin display and shop buttons
                 console.log(`Purchased ${color.name} for ${color.cost} coins.`);
+                showMessage("Success!", `You purchased ${color.name}!`);
             } else {
                 console.log("Not enough coins to purchase this color.");
-                // Optionally show a message to the user
                 showMessage("Not Enough Coins!", `You need ${color.cost - coins} more coins for ${color.name}.`);
             }
         }
